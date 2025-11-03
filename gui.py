@@ -186,7 +186,7 @@ def choosing_file_two(event=None):
     # If something is in it clear it first
     filename_two_label.config(state="normal")
     if filename_two_label.get("1.0", "end-1c"):
-     filename_two_label.delete("1.0", tk.END)
+        filename_two_label.delete("1.0", tk.END)
 
     filename_two = askopenfilename() # show an "Open" dialog box and return the path to the selected file
     filename_two_label.tag_configure("center", justify="center")
@@ -194,6 +194,34 @@ def choosing_file_two(event=None):
     filename_two_label.tag_add("center", "1.0", "end")
 
     filename_two_label.config(state="disabled")
+
+def choosing_file(event=None, slot=0):
+    global filename_one, filename_two
+
+    if slot == 0:
+        # If something is in it clear it first
+        filename_one_label.config(state="normal")
+        if filename_one_label.get("1.0", "end-1c"):
+            filename_one_label.delete("1.0", tk.END)
+
+        filename_one = askopenfilename() # show an "Open" dialog box and return the path to the selected file
+        filename_one_label.tag_configure("center", justify="center")
+        filename_one_label.insert(tk.END, filename_one)
+        filename_one_label.tag_add("center", "1.0", "end")
+
+        filename_one_label.config(state="disabled")
+    else:
+        # If something is in it clear it first
+        filename_two_label.config(state="normal")
+        if filename_two_label.get("1.0", "end-1c"):
+            filename_two_label.delete("1.0", tk.END)
+
+        filename_two = askopenfilename() # show an "Open" dialog box and return the path to the selected file
+        filename_two_label.tag_configure("center", justify="center")
+        filename_two_label.insert(tk.END, filename_two)
+        filename_two_label.tag_add("center", "1.0", "end")
+
+        filename_two_label.config(state="disabled")
 
 def reset_window(event=None):
     global comparison_figure, diff_image, frames, processing_thread, is_processing, filename_one, filename_two
@@ -248,7 +276,7 @@ helpmenu = tk.Menu(menu, tearoff=False)
 menu.add_cascade(label="File", menu=filemenu)
 menu.add_cascade(label="Help", menu=helpmenu)
 
-filemenu.add_command(label="New", command=reset_window)
+filemenu.add_command(label="New", command=lambda event: reset_window(event))
 filemenu.add_command(label="Open")
 filemenu.add_separator()
 filemenu.add_command(label="Exit", command=root.quit)
@@ -258,8 +286,9 @@ helpmenu.add_cascade(label="About")
 # File Selection Grid Frame
 file_selection_frame = tk.Frame(root)
 
-btn_filename_one = tk.Button(file_selection_frame, text="Picture One Location", command=choosing_file_one, cursor="hand2", font=("Arial", 12))
-btn_filename_two = tk.Button(file_selection_frame, text="Picture Two Location", command=choosing_file_two, cursor="hand2", font=("Arial", 12))
+# lambda creates anonymous functions that can be passed argurmnets to widget commands or event handlers
+btn_filename_one = tk.Button(file_selection_frame, text="Picture One Location", command=lambda: choosing_file(slot=0), cursor="hand2", font=("Arial", 12))
+btn_filename_two = tk.Button(file_selection_frame, text="Picture Two Location", command=lambda: choosing_file(slot=1), cursor="hand2", font=("Arial", 12))
 
 filename_one_label = tk.Text(file_selection_frame, height=1.5, width=35, font=("Arial", 12), state="disabled", wrap="word")
 filename_two_label = tk.Text(file_selection_frame, height=1.5, width=35, font=("Arial", 12), state="disabled", wrap="word")
@@ -276,9 +305,10 @@ status_label = tk.Label(root, text="Ready", font=("Arial", 12))
 status_label.pack(pady=5)
 
 # Compare Button
-btn_compare = tk.Button(root, text="Compare Images", command=start_comparison, font=("Arial", 12), cursor="hand2")
+btn_compare = tk.Button(root, text="Compare Images", command=lambda event: start_comparison(event), font=("Arial", 12), cursor="hand2")
 btn_compare.pack(pady=10)
 
+# Canvas
 canvas = tk.Canvas(root, width=500, height=300)
 canvas.pack(pady=10)
 
@@ -289,15 +319,15 @@ save_options = ["Comparison Figure", "Individual Image", "Animated Gif"]
 radio_var = tk.IntVar()
 
 for index in range(len(save_options)):
-   tk.Radiobutton(radio_button_frame,font=("Arial", 12), text=save_options[index], variable=radio_var, value=index, padx=5).pack(side=tk.LEFT, pady=20)
+    tk.Radiobutton(radio_button_frame,font=("Arial", 12), text=save_options[index], variable=radio_var, value=index, padx=5).pack(side=tk.LEFT, pady=20)
 
 radio_button_frame.pack()
 
 # Save Selection Grid Frame
 save_selection_frame = tk.Frame(root)
 
-btn_save = tk.Button(save_selection_frame, text="Save", command=save_image, font=("Arial", 12), state="disabled")
-btn_reset = tk.Button(save_selection_frame, text="Reset", command=reset_window, font=("Arial", 12), cursor="hand2")
+btn_save = tk.Button(save_selection_frame, text="Save", command=lambda event: save_image(event), font=("Arial", 12), state="disabled")
+btn_reset = tk.Button(save_selection_frame, text="Reset", command=lambda event: reset_window(event), font=("Arial", 12), cursor="hand2")
 
 btn_save.grid(row=0, column=1, padx= 5, pady=2)
 btn_reset.grid(row=0, column=2, padx=5, pady=2)
@@ -305,11 +335,11 @@ btn_reset.grid(row=0, column=2, padx=5, pady=2)
 save_selection_frame.pack(pady=10)
 
 # Bindings
-root.bind("<Control-r>", reset_window)                  # Bind Ctrl+r (Reset Window)
-root.bind("<Control-Key-1>", choosing_file_one)         # Bind Ctrl+1 (Choose File One)
-root.bind("<Control-Key-2>", choosing_file_two)         # Bind Ctrl+2 (Choose File Two)
-root.bind("<Control-space>", start_comparison)          # Bind Ctrl-space (Start Processing)
-root.bind("<Control-s>", save_image)                    # Bind Ctrl-s (Save Image)
+root.bind("<Control-r>", lambda event: reset_window(event))                 # Bind Ctrl+r (Reset Window)
+root.bind("<Control-Key-1>", lambda event: choosing_file(event, slot=0))    # Bind Ctrl+1 (Choose File One)
+root.bind("<Control-Key-2>", lambda event: choosing_file(event, slot=1))    # Bind Ctrl+2 (Choose File Two)
+root.bind("<Control-space>", lambda event: start_comparison(event))         # Bind Ctrl-space (Start Processing)
+root.bind("<Control-s>", lambda event: save_image(event))                   # Bind Ctrl-s (Save Image)
 
 
 root.mainloop()
