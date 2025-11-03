@@ -16,6 +16,7 @@ processing_thread = None
 is_processing = False
 filename_one = None
 filename_two = None
+next_slot = 0
 
 image_files = [
             ("PNG File", "*.png"),
@@ -96,7 +97,7 @@ def make_figure(images, titles, score):
         frames.append(pil_image)
 
     # Create Figure
-    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(8, 6))
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(8, 6))
     for ax, img, title in zip(axes.flat, images, titles):
         ax.imshow(img if len(img.shape) == 3 else img, cmap='gray')
         #ax.set_title(title)
@@ -165,63 +166,36 @@ def save_image(event=None):
             
         status_label.config(text=f"Saved at: {file_path.name}")
 
-def choosing_file_one(event=None):
-    global filename_one
+def choosing_file(event=None, slot=None):
+    global filename_one, filename_two, next_slot
 
-    # If something is in it clear it first
-    filename_one_label.config(state="normal")
-    if filename_one_label.get("1.0", "end-1c"):
-     filename_one_label.delete("1.0", tk.END)
+    # If slot not provided, use and flip the next_slot
+    if slot is None:
+        slot = next_slot
+        next_slot = 1 - next_slot # toggles between 0 and 1
 
-    filename_one = askopenfilename() # show an "Open" dialog box and return the path to the selected file
-    filename_one_label.tag_configure("center", justify="center")
-    filename_one_label.insert(tk.END, filename_one)
-    filename_one_label.tag_add("center", "1.0", "end")
+    # Choose which lable and variable to use based on slot
+    label = filename_one_label if slot == 0 else filename_two_label
 
-    filename_one_label.config(state="disabled")
+    # Clear current content
+    label.config(state="normal")
+    label.delete("1.0", tk.END)
 
-def choosing_file_two(event=None):
-    global filename_two
+    # Ask for file
+    filename = askopenfilename()
 
-    # If something is in it clear it first
-    filename_two_label.config(state="normal")
-    if filename_two_label.get("1.0", "end-1c"):
-        filename_two_label.delete("1.0", tk.END)
+    # Display the filename centered
+    label.tag_configure("center", justify="center")
+    label.insert(tk.END, filename)
+    label.tag_add("center", "1.0", "end")
 
-    filename_two = askopenfilename() # show an "Open" dialog box and return the path to the selected file
-    filename_two_label.tag_configure("center", justify="center")
-    filename_two_label.insert(tk.END, filename_two)
-    filename_two_label.tag_add("center", "1.0", "end")
+    label.config(state="disabled")
 
-    filename_two_label.config(state="disabled")
-
-def choosing_file(event=None, slot=0):
-    global filename_one, filename_two
-
+    # Save to the correct global variable
     if slot == 0:
-        # If something is in it clear it first
-        filename_one_label.config(state="normal")
-        if filename_one_label.get("1.0", "end-1c"):
-            filename_one_label.delete("1.0", tk.END)
-
-        filename_one = askopenfilename() # show an "Open" dialog box and return the path to the selected file
-        filename_one_label.tag_configure("center", justify="center")
-        filename_one_label.insert(tk.END, filename_one)
-        filename_one_label.tag_add("center", "1.0", "end")
-
-        filename_one_label.config(state="disabled")
+        filename_one = filename
     else:
-        # If something is in it clear it first
-        filename_two_label.config(state="normal")
-        if filename_two_label.get("1.0", "end-1c"):
-            filename_two_label.delete("1.0", tk.END)
-
-        filename_two = askopenfilename() # show an "Open" dialog box and return the path to the selected file
-        filename_two_label.tag_configure("center", justify="center")
-        filename_two_label.insert(tk.END, filename_two)
-        filename_two_label.tag_add("center", "1.0", "end")
-
-        filename_two_label.config(state="disabled")
+        filename_two = filename
 
 def reset_window(event=None):
     global comparison_figure, diff_image, frames, processing_thread, is_processing, filename_one, filename_two
@@ -260,6 +234,10 @@ def reset_window(event=None):
     # Reset radio button
     radio_var.set(0)
 
+def exit_app(event=None):
+    # Closes the main Tkinter window
+    root.destroy()
+
 # Tkinter GUI
 root = tk.Tk()
 root.title("Thread-Safe Image Comparison")
@@ -276,10 +254,11 @@ helpmenu = tk.Menu(menu, tearoff=False)
 menu.add_cascade(label="File", menu=filemenu)
 menu.add_cascade(label="Help", menu=helpmenu)
 
-filemenu.add_command(label="New", command=lambda event: reset_window(event))
-filemenu.add_command(label="Open")
+filemenu.add_command(label="New", command=lambda: reset_window(), accelerator="Ctrl+R")
+filemenu.add_command(label="Open", command=lambda: choosing_file(), accelerator="Ctrl+O")
+filemenu.add_command(label="Save", command=lambda: save_image(), accelerator="Ctrl+S")
 filemenu.add_separator()
-filemenu.add_command(label="Exit", command=root.quit)
+filemenu.add_command(label="Exit", command=root.quit, accelerator="Ctrl+Shift+W")
 
 helpmenu.add_cascade(label="About")
 
@@ -305,7 +284,7 @@ status_label = tk.Label(root, text="Ready", font=("Arial", 12))
 status_label.pack(pady=5)
 
 # Compare Button
-btn_compare = tk.Button(root, text="Compare Images", command=lambda event: start_comparison(event), font=("Arial", 12), cursor="hand2")
+btn_compare = tk.Button(root, text="Compare Images", command=lambda: start_comparison(), font=("Arial", 12), cursor="hand2")
 btn_compare.pack(pady=10)
 
 # Canvas
@@ -326,8 +305,8 @@ radio_button_frame.pack()
 # Save Selection Grid Frame
 save_selection_frame = tk.Frame(root)
 
-btn_save = tk.Button(save_selection_frame, text="Save", command=lambda event: save_image(event), font=("Arial", 12), state="disabled")
-btn_reset = tk.Button(save_selection_frame, text="Reset", command=lambda event: reset_window(event), font=("Arial", 12), cursor="hand2")
+btn_save = tk.Button(save_selection_frame, text="Save", command=lambda: save_image(), font=("Arial", 12), state="disabled")
+btn_reset = tk.Button(save_selection_frame, text="Reset", command=lambda: reset_window(), font=("Arial", 12), cursor="hand2")
 
 btn_save.grid(row=0, column=1, padx= 5, pady=2)
 btn_reset.grid(row=0, column=2, padx=5, pady=2)
@@ -338,8 +317,10 @@ save_selection_frame.pack(pady=10)
 root.bind("<Control-r>", lambda event: reset_window(event))                 # Bind Ctrl+r (Reset Window)
 root.bind("<Control-Key-1>", lambda event: choosing_file(event, slot=0))    # Bind Ctrl+1 (Choose File One)
 root.bind("<Control-Key-2>", lambda event: choosing_file(event, slot=1))    # Bind Ctrl+2 (Choose File Two)
-root.bind("<Control-space>", lambda event: start_comparison(event))         # Bind Ctrl-space (Start Processing)
-root.bind("<Control-s>", lambda event: save_image(event))                   # Bind Ctrl-s (Save Image)
+root.bind("<Control-o>", lambda event: choosing_file(event))                # Bind Ctrl+o (Choose file)
+root.bind("<Control-space>", lambda event: start_comparison(event))         # Bind Ctrl+Space (Start Processing)
+root.bind("<Control-s>", lambda event: save_image(event))                   # Bind Ctrl+s (Save Image)
+root.bind("<Control-Shift-KeyPress-W>", lambda event: exit_app(event))      # Bind Ctrl+Shift+W (exit application)
 
 
 root.mainloop()
